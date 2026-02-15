@@ -2,161 +2,107 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Memorama TikTok Online</title>
+
 <style>
-body{font-family:Arial;text-align:center;background:#f2f2f2}
-.grid{display:grid;grid-template-columns:repeat(6,80px);gap:8px;justify-content:center;margin-top:10px}
-.card{width:80px;height:80px;background:#444;color:white;font-size:40px;display:flex;align-items:center;justify-content:center;border-radius:10px;cursor:pointer}
-.card.open{background:white;color:black}
-.card.matched{background:#ccc;color:black}
-#players{margin-top:10px}
+body{
+    font-family: Arial;
+    text-align:center;
+    background:#f2f2f2;
+}
+
+#login{
+    margin-top:60px;
+}
+
+input{
+    padding:10px;
+    font-size:18px;
+}
+
+button{
+    padding:10px 20px;
+    font-size:18px;
+    cursor:pointer;
+}
+
+#juego{
+    display:none;
+    margin-top:20px;
+}
+
+.tablero{
+    display:grid;
+    grid-template-columns:repeat(4,80px);
+    gap:10px;
+    justify-content:center;
+}
+
+.carta{
+    width:80px;
+    height:80px;
+    background:#ff0050;
+    color:white;
+    font-size:30px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    cursor:pointer;
+}
 </style>
 </head>
+
 <body>
 
 <h1>Memorama TikTok Online</h1>
 
-<input id="name" placeholder="Tu nombre">
-<button onclick="join()">Entrar</button>
+<div id="login">
+    <input id="nombre" placeholder="Tu nombre">
+    <button onclick="entrar()">Entrar</button>
+</div>
 
-<div id="players"></div>
-<div class="grid" id="grid"></div>
-
-<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+<div id="juego">
+    <h2 id="jugador"></h2>
+    <div class="tablero" id="tablero"></div>
+</div>
 
 <script>
-const firebaseConfig={
-  apiKey:"APIKEY",
-  authDomain:"APP.firebaseapp.com",
-  databaseURL:"https://APP.firebaseio.com",
-  projectId:"APP",
-  storageBucket:"APP.appspot.com",
-  messagingSenderId:"ID",
-  appId:"APPID"
-};
+function entrar(){
+    let nombre = document.getElementById("nombre").value;
+    if(nombre==""){
+        alert("Escribe tu nombre");
+        return;
+    }
 
-firebase.initializeApp(firebaseConfig);
-const db=firebase.database();
+    document.getElementById("login").style.display="none";
+    document.getElementById("juego").style.display="block";
+    document.getElementById("jugador").innerText="Jugador: "+nombre;
 
-const values={
-"🎁":50,"🌹":1,"💎":10,"👑":40,"🦋":60,"⭐":100,"⛓️":200,"😎":100,"💣":-30
-};
-
-let cards=[];
-let first=null;
-let turn=0;
-let players=[];
-let myId=null;
-
-function createCards(){
-cards=[
-"🎁","🎁","🎁","🎁",
-"🌹","🌹","🌹","🌹",
-"💎","💎","💎","💎",
-"👑","👑","👑","👑",
-"🦋","🦋","🦋","🦋",
-"⭐","⭐","⭐","⭐",
-"⛓️","⛓️","⛓️","⛓️",
-"😎",
-"💣","💣","💣"
-];
-cards.sort(()=>0.5-Math.random());
+    iniciarJuego();
 }
 
-function join(){
-const name=document.getElementById("name").value;
-if(!name)return;
+function iniciarJuego(){
+    let emojis=["🎵","🎵","🔥","🔥","💃","💃","😎","😎"];
+    emojis.sort(()=>Math.random()-0.5);
 
-myId=Date.now();
-db.ref("game/players/"+myId).set({name,score:0});
+    let tablero=document.getElementById("tablero");
+    tablero.innerHTML="";
 
-db.ref("game").once("value",snap=>{
-if(!snap.val().cards){
-createCards();
-db.ref("game/cards").set(cards);
-}
-});
+    emojis.forEach(e=>{
+        let carta=document.createElement("div");
+        carta.className="carta";
+        carta.dataset.valor=e;
+        carta.innerText="?";
 
-listen();
-}
+        carta.onclick=function(){
+            this.innerText=this.dataset.valor;
+        };
 
-function listen(){
-db.ref("game").on("value",snap=>{
-const data=snap.val();
-if(!data)return;
-
-cards=data.cards||cards;
-players=data.players||{};
-turn=data.turn||0;
-
-renderPlayers();
-renderGrid();
-});
-}
-
-function renderPlayers(){
-const div=document.getElementById("players");
-div.innerHTML="";
-Object.keys(players).forEach((id,i)=>{
-const p=players[id];
-div.innerHTML+= (i===turn?"👉 ":"")+p.name+" : "+p.score+"<br>";
-});
-}
-
-function renderGrid(){
-const grid=document.getElementById("grid");
-grid.innerHTML="";
-cards.forEach((e,i)=>{
-const c=document.createElement("div");
-c.className="card";
-c.textContent="?";
-c.onclick=()=>play(i,e,c);
-grid.appendChild(c);
-});
-}
-
-function play(i,e,el){
-const ids=Object.keys(players);
-if(ids[turn]!=myId)return;
-
-el.textContent=e;
-
-if(e==="💣"||e==="😎"){
-updateScore(values[e]);
-nextTurn();
-return;
-}
-
-if(!first){
-first={i,e};
-return;
-}
-
-if(first.e===e){
-updateScore(values[e]);
-}else{
-setTimeout(()=>renderGrid(),500);
-}
-
-first=null;
-nextTurn();
-}
-
-function updateScore(v){
-const ref=db.ref("game/players/"+myId+"/score");
-ref.once("value",s=>{
-ref.set((s.val()||0)+v);
-});
-}
-
-function nextTurn(){
-const ids=Object.keys(players);
-let t=turn+1;
-if(t>=ids.length)t=0;
-db.ref("game/turn").set(t);
+        tablero.appendChild(carta);
+    });
 }
 </script>
 
 </body>
-</
+</html>
