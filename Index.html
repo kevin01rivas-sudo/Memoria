@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Memorama TikTok Online</title>
+<style>
+body{font-family:Arial;text-align:center;background:#f2f2f2}
+.grid{display:grid;grid-template-columns:repeat(6,80px);gap:8px;justify-content:center;margin-top:10px}
+.card{width:80px;height:80px;background:#444;color:white;font-size:40px;display:flex;align-items:center;justify-content:center;border-radius:10px;cursor:pointer}
+.card.open{background:white;color:black}
+.card.matched{background:#ccc;color:black}
+#players{margin-top:10px}
+</style>
+</head>
+<body>
+
+<h1>Memorama TikTok Online</h1>
+
+<input id="name" placeholder="Tu nombre">
+<button onclick="join()">Entrar</button>
+
+<div id="players"></div>
+<div class="grid" id="grid"></div>
+
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+
+<script>
+const firebaseConfig={
+  apiKey:"APIKEY",
+  authDomain:"APP.firebaseapp.com",
+  databaseURL:"https://APP.firebaseio.com",
+  projectId:"APP",
+  storageBucket:"APP.appspot.com",
+  messagingSenderId:"ID",
+  appId:"APPID"
+};
+
+firebase.initializeApp(firebaseConfig);
+const db=firebase.database();
+
+const values={
+"🎁":50,"🌹":1,"💎":10,"👑":40,"🦋":60,"⭐":100,"⛓️":200,"😎":100,"💣":-30
+};
+
+let cards=[];
+let first=null;
+let turn=0;
+let players=[];
+let myId=null;
+
+function createCards(){
+cards=[
+"🎁","🎁","🎁","🎁",
+"🌹","🌹","🌹","🌹",
+"💎","💎","💎","💎",
+"👑","👑","👑","👑",
+"🦋","🦋","🦋","🦋",
+"⭐","⭐","⭐","⭐",
+"⛓️","⛓️","⛓️","⛓️",
+"😎",
+"💣","💣","💣"
+];
+cards.sort(()=>0.5-Math.random());
+}
+
+function join(){
+const name=document.getElementById("name").value;
+if(!name)return;
+
+myId=Date.now();
+db.ref("game/players/"+myId).set({name,score:0});
+
+db.ref("game").once("value",snap=>{
+if(!snap.val().cards){
+createCards();
+db.ref("game/cards").set(cards);
+}
+});
+
+listen();
+}
+
+function listen(){
+db.ref("game").on("value",snap=>{
+const data=snap.val();
+if(!data)return;
+
+cards=data.cards||cards;
+players=data.players||{};
+turn=data.turn||0;
+
+renderPlayers();
+renderGrid();
+});
+}
+
+function renderPlayers(){
+const div=document.getElementById("players");
+div.innerHTML="";
+Object.keys(players).forEach((id,i)=>{
+const p=players[id];
+div.innerHTML+= (i===turn?"👉 ":"")+p.name+" : "+p.score+"<br>";
+});
+}
+
+function renderGrid(){
+const grid=document.getElementById("grid");
+grid.innerHTML="";
+cards.forEach((e,i)=>{
+const c=document.createElement("div");
+c.className="card";
+c.textContent="?";
+c.onclick=()=>play(i,e,c);
+grid.appendChild(c);
+});
+}
+
+function play(i,e,el){
+const ids=Object.keys(players);
+if(ids[turn]!=myId)return;
+
+el.textContent=e;
+
+if(e==="💣"||e==="😎"){
+updateScore(values[e]);
+nextTurn();
+return;
+}
+
+if(!first){
+first={i,e};
+return;
+}
+
+if(first.e===e){
+updateScore(values[e]);
+}else{
+setTimeout(()=>renderGrid(),500);
+}
+
+first=null;
+nextTurn();
+}
+
+function updateScore(v){
+const ref=db.ref("game/players/"+myId+"/score");
+ref.once("value",s=>{
+ref.set((s.val()||0)+v);
+});
+}
+
+function nextTurn(){
+const ids=Object.keys(players);
+let t=turn+1;
+if(t>=ids.length)t=0;
+db.ref("game/turn").set(t);
+}
+</script>
+
+</body>
+</
