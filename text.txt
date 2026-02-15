@@ -1,0 +1,81 @@
+}
+const values={
+  "🎁":50,
+  "🌹":1,
+  "💎":10,
+  "👑":40,
+  "🦋":60,
+  "⭐":100,
+  "⛓️":200,
+  "😎":100,
+  "💣":-30
+};
+
+let cards=[
+  "🎁","🎁","🎁","🎁",
+  "🌹","🌹","🌹","🌹",
+  "💎","💎","💎","💎",
+  "👑","👑","👑","👑",
+  "🦋","🦋","🦋","🦋",
+  "⭐","⭐","⭐","⭐",
+  "⛓️","⛓️","⛓️","⛓️",
+  "😎",
+  "💣","💣","💣"
+];
+
+cards.sort(()=>0.5-Math.random());
+
+let first=null;
+let lock=false;
+let score=0;
+
+const grid=document.getElementById("grid");
+
+const scoreEl=document.createElement("h2");
+scoreEl.textContent="Puntos: 0";
+document.body.insertBefore(scoreEl,grid);
+
+cards.forEach(e=>{
+  const c=document.createElement("div");
+  c.className="card";
+  c.textContent="?";
+  c.dataset.value=e;
+  grid.appendChild(c);
+
+  c.onclick=()=>{
+    if(lock||c.classList.contains("matched")||c===first)return;
+
+    c.textContent=e;
+    c.classList.add("open");
+
+    if(e==="💣"||e==="😎"){
+      score+=values[e];
+      scoreEl.textContent="Puntos: "+score;
+      c.classList.add("matched");
+      return;
+    }
+
+    if(!first){
+      first=c;
+      return;
+    }
+
+    if(first.dataset.value===c.dataset.value){
+      first.classList.add("matched");
+      c.classList.add("matched");
+
+      score+=values[e];
+      scoreEl.textContent="Puntos: "+score;
+
+      first=null;
+    }else{
+      lock=true;
+      setTimeout(()=>{
+        first.textContent="?";
+        c.textContent="?";
+        first.classList.remove("open");
+        c.classList.remove("open");
+        first=null;
+        lock=false;
+      },800);
+    }
